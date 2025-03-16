@@ -1,7 +1,7 @@
 import os
 from typing import List, Dict, Any, Optional
-from langchain_community.embeddings import SentenceTransformerEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_chroma import Chroma
 from langchain_core.documents import Document
 import logging
 
@@ -13,7 +13,7 @@ class VectorDatabase:
     """
     def __init__(self, db_directory: str = "data/database/vector_store"):
         """
-        Initialize the vector database with Sentence Transformer embeddings.
+        Initialize the vector database with HuggingFace embeddings.
         
         Args:
             db_directory: Directory to store the ChromaDB files
@@ -25,17 +25,17 @@ class VectorDatabase:
         
         # Initialize embeddings
         try:
-            self.embeddings = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
-            logger.info("Sentence Transformer embeddings initialized successfully")
+            self.embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+            logger.info("HuggingFace embeddings initialized successfully")
         except Exception as e:
-            logger.error(f"Failed to initialize Sentence Transformer embeddings: {e}")
+            logger.error(f"Failed to initialize HuggingFace embeddings: {e}")
             raise
         
         # Initialize ChromaDB
         try:
             self.db = Chroma(
                 persist_directory=db_directory,
-                embedding=self.embeddings,
+                embedding_function=self.embeddings,  # Correct parameter name
                 collection_name="transcript_embeddings"
             )
             logger.info(f"ChromaDB initialized at {db_directory}")
@@ -59,6 +59,10 @@ class VectorDatabase:
             ID of the added document
         """
         try:
+            # Format metadata correctly
+            if 'keywords' in metadata and isinstance(metadata['keywords'], list):
+                metadata['keywords'] = ", ".join(metadata['keywords'])
+            
             # Create document
             document = Document(
                 page_content=content,
@@ -151,13 +155,13 @@ class VectorDatabase:
             raise
 
 def create_vector_db(documents, persist_directory="data/database/vector_store"):
-    # Initialize the Sentence Transformer embeddings
-    embeddings = SentenceTransformerEmbeddings(model_name="all-MiniLM-L6-v2")
+    # Initialize the HuggingFace embeddings
+    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     
     # Create and persist the ChromaDB instance
     vectordb = Chroma.from_documents(
         documents=documents,
-        embedding=embeddings,
+        embedding_function=embeddings,  # Correct parameter name
         persist_directory=persist_directory
     )
     
