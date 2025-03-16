@@ -1,0 +1,44 @@
+# Diane Project Configuration
+
+# Audio Processing
+audio:
+  sampling_rate: 16000
+  device: "cuda:0" # Use "cpu" if no GPU available
+  compute_type: "float16" # Options: float16, int8, int8_float16
+
+# Whisper Model
+transcription:
+  model_size: "medium" # Options: tiny, base, small, medium, large-v1, large-v2
+  language: "en" # Language code or "auto" for auto-detection
+  beam_size: 5
+  initial_prompt: "This is a personal diary recording."
+  save_timestamps: true
+
+# Database
+database:
+  sql_path: "data/database/memories.db"
+  vector_db_path: "data/database/vector_store"
+  embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+
+# LLM Settings
+llm:
+  model: "gpt-3.5-turbo"
+  temperature: 0.0
+  max_tokens: 1024
+  top_p: 1
+  system_message: "You are Diane, a personal memory assistant that helps users recall information from their daily recordings."
+
+# Processing
+processing:
+  chunk_size: 512
+  chunk_overlap: 100
+  metadata_fields:
+    - date
+    - keywords
+    - sentiment
+    - entities
+
+# Logging
+logging:
+  level: "INFO" # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  file: "logs/diane.log"
