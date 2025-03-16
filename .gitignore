@@ -1,0 +1,36 @@
+# Environment and dependencies
+.venv/
+.venv
+env/
+.env
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# API keys and sensitive information
+config/.env
+
+# Database files
+*.db
+data/database/vector_store/
+
+# Large data files (audio and transcripts can be selectively excluded)
+# Uncomment if you don't want to include these in the repository
+# data/raw_audio/
+# data/processed_audio/
+# data/transcripts/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# IDE specific files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace

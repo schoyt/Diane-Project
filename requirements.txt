@@ -1,0 +1,19 @@
+# Core Dependencies
+python-dotenv>=1.0.0  # For loading environment variables
+spacy>=3.0.0          # For keyword extraction
+chromadb>=0.4.0       # For vector database
+langchain>=0.1.0      # For natural language querying
+langchain-chroma>=0.1.0  # For Chroma integration
+langchain-openai>=0.1.0  # For OpenAI integration
+
+# NLP Model (spaCy)
+en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.0/en_core_web_sm-3.7.0-py3-none-any.whl
+
+# Faster Whisper Dependencies
+faster-whisper>=0.1.0
+torch>=2.0.0  # Required for Faster Whisper models
+
+# Optional (for future use)
+numpy>=1.22.0         # For Chroma and other numerical operations
+pandas>=2.0.0         # For data analysis (e.g., trend analysis)
+sqlalchemy>=2.0.0     # For SQL database interactions
