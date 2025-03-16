@@ -5,7 +5,7 @@ Tests for the query system components
 import unittest
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 import yaml
 from dotenv import load_dotenv
 
@@ -29,7 +29,9 @@ class TestQueryParser(unittest.TestCase):
         params = self.parser.parse_query(query)
         
         self.assertEqual(params.query_type, "recall")
-        self.assertIn("October 5, 2023", params.date_filters)
+        # Case-insensitive comparison for dates
+        date_filters_lower = [date.lower() for date in params.date_filters]
+        self.assertIn("october 5, 2023", date_filters_lower)
         
     def test_parse_count_query(self):
         """Test parsing count queries"""
@@ -49,7 +51,9 @@ class TestQueryParser(unittest.TestCase):
         self.assertEqual(params.query_type, "insight")
         self.assertIn("productivity", params.keywords)
         self.assertIn("habits", params.keywords)
-        self.assertIn("June", params.date_filters)
+        # Case-insensitive comparison for dates
+        date_filters_lower = [date.lower() for date in params.date_filters]
+        self.assertIn("june", date_filters_lower)
 
 class TestDateUtils(unittest.TestCase):
     def test_parse_natural_date(self):

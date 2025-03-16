@@ -10,127 +10,99 @@ def parse_natural_date(date_str):
     Parse a natural language date string into a datetime object
     
     Args:
-        date_str: Natural language date string (e.g., 'yesterday', 'last week', 'October 5')
+        date_str: String representation of date (e.g., "October 5, 2023")
         
     Returns:
-        tuple: (start_datetime, end_datetime, is_range)
+        tuple: (start_date, end_date, is_range) as datetime objects and boolean
     """
     today = datetime.now()
-    
-    # Handle 'today'
-    if re.match(r'^today$', date_str, re.IGNORECASE):
+    is_range = False
+
+    # Yesterday
+    if re.match(r"yesterday|last\s+day", date_str, re.IGNORECASE):
+        target_date = today - timedelta(days=1)
+        is_range = True
         return (
-            today.replace(hour=0, minute=0, second=0, microsecond=0),
-            today.replace(hour=23, minute=59, second=59, microsecond=999999),
-            False
+            target_date.replace(hour=0, minute=0, second=0), 
+            target_date.replace(hour=23, minute=59, second=59),
+            is_range
         )
-    
-    # Handle 'yesterday'
-    if re.match(r'^yesterday$', date_str, re.IGNORECASE):
-        yesterday = today - timedelta(days=1)
-        return (
-            yesterday.replace(hour=0, minute=0, second=0, microsecond=0),
-            yesterday.replace(hour=23, minute=59, second=59, microsecond=999999),
-            False
-        )
-    
-    # Handle 'last week'
-    if re.match(r'^last\s+week$', date_str, re.IGNORECASE):
+
+    # Last week
+    elif re.match(r"last\s+week", date_str, re.IGNORECASE):
         start_date = today - timedelta(days=7)
-        return (
-            start_date.replace(hour=0, minute=0, second=0, microsecond=0),
-            today.replace(hour=23, minute=59, second=59, microsecond=999999),
-            True
-        )
-    
-    # Handle 'last month'
-    if re.match(r'^last\s+month$', date_str, re.IGNORECASE):
+        is_range = True
+        return start_date, today, is_range
+
+    # Last month
+    elif re.match(r"last\s+month", date_str, re.IGNORECASE):
         start_date = today - timedelta(days=30)
-        return (
-            start_date.replace(hour=0, minute=0, second=0, microsecond=0),
-            today.replace(hour=23, minute=59, second=59, microsecond=999999),
-            True
-        )
-    
-    # Handle 'last year'
-    if re.match(r'^last\s+year$', date_str, re.IGNORECASE):
+        is_range = True
+        return start_date, today, is_range
+        
+    # Last year
+    elif re.match(r"last\s+year", date_str, re.IGNORECASE):
         start_date = today - timedelta(days=365)
-        return (
-            start_date.replace(hour=0, minute=0, second=0, microsecond=0),
-            today.replace(hour=23, minute=59, second=59, microsecond=999999),
-            True
-        )
-    
-    # Try to parse specific dates
-    for fmt in ["%B %d, %Y", "%b %d, %Y", "%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y"]:
-        try:
-            parsed_date = datetime.strptime(date_str, fmt)
-            return (
-                parsed_date.replace(hour=0, minute=0, second=0, microsecond=0),
-                parsed_date.replace(hour=23, minute=59, second=59, microsecond=999999),
-                False
-            )
-        except ValueError:
-            continue
-    
-    # Try to parse month and year
-    for fmt in ["%B %Y", "%b %Y"]:
-        try:
-            parsed_date = datetime.strptime(date_str, fmt)
-            
-            # Determine last day of month
-            if parsed_date.month in [1, 3, 5, 7, 8, 10, 12]:
-                last_day = 31
-            elif parsed_date.month in [4, 6, 9, 11]:
-                last_day = 30
-            elif parsed_date.month == 2:
-                # Crude leap year check
-                if parsed_date.year % 4 == 0 and (parsed_date.year % 100 != 0 or parsed_date.year % 400 == 0):
-                    last_day = 29
-                else:
-                    last_day = 28
-            else:
-                last_day = 28
+        is_range = True
+        return start_date, today, is_range
+        
+    # Try to parse specific date formats
+    try:
+        # Try common date formats
+        for fmt in ["%B %d, %Y", "%b %d, %Y", "%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y"]:
+            try:
+                parsed_date = datetime.strptime(date_str, fmt)
+                return (
+                    parsed_date.replace(hour=0, minute=0, second=0), 
+                    parsed_date.replace(hour=23, minute=59, second=59),
+                    False
+                )
+            except ValueError:
+                continue
                 
-            return (
-                parsed_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0),
-                parsed_date.replace(day=last_day, hour=23, minute=59, second=59, microsecond=999999),
-                True
-            )
-        except ValueError:
-            continue
-    
-    # Try to parse just month (assume current year)
-    for fmt in ["%B", "%b"]:
-        try:
-            current_year = today.year
-            month_str = f"{date_str} {current_year}"
-            parsed_date = datetime.strptime(month_str, f"{fmt} %Y")
-            
-            # Determine last day of month
-            if parsed_date.month in [1, 3, 5, 7, 8, 10, 12]:
-                last_day = 31
-            elif parsed_date.month in [4, 6, 9, 11]:
-                last_day = 30
-            elif parsed_date.month == 2:
-                # Crude leap year check
-                if parsed_date.year % 4 == 0 and (parsed_date.year % 100 != 0 or parsed_date.year % 400 == 0):
-                    last_day = 29
-                else:
-                    last_day = 28
-            else:
+        # Try month and year
+        for fmt in ["%B %Y", "%b %Y"]:
+            try:
+                parsed_date = datetime.strptime(date_str, fmt)
                 last_day = 28
+                if parsed_date.month in [1, 3, 5, 7, 8, 10, 12]:
+                    last_day = 31
+                elif parsed_date.month in [4, 6, 9, 11]:
+                    last_day = 30
+                is_range = True
+                return (
+                    parsed_date.replace(day=1, hour=0, minute=0, second=0), 
+                    parsed_date.replace(day=last_day, hour=23, minute=59, second=59),
+                    is_range
+                )
+            except ValueError:
+                continue
                 
-            return (
-                parsed_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0),
-                parsed_date.replace(day=last_day, hour=23, minute=59, second=59, microsecond=999999),
-                True
-            )
-        except ValueError:
-            continue
-    
-    # Could not parse the date
-    return None, None, False
+        # Try just month
+        for fmt in ["%B", "%b"]:
+            try:
+                this_year = today.year
+                month_str = f"{date_str} {this_year}"
+                parsed_date = datetime.strptime(month_str, f"{fmt} %Y")
+                last_day = 28
+                if parsed_date.month in [1, 3, 5, 7, 8, 10, 12]:
+                    last_day = 31
+                elif parsed_date.month in [4, 6, 9, 11]:
+                    last_day = 30
+                is_range = True
+                return (
+                    parsed_date.replace(day=1, hour=0, minute=0, second=0), 
+                    parsed_date.replace(day=last_day, hour=23, minute=59, second=59),
+                    is_range
+                )
+            except ValueError:
+                continue
+            
+        # Return None if we can't parse the date
+        return None, None, False
+        
+    except Exception:
+        return None, None, False
 
 def format_timestamp(timestamp, include_time=True):
     """

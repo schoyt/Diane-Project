@@ -6,8 +6,9 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
-from langchain_chroma import ChromaVectorStore
+from langchain_chroma import Chroma
 from langchain_core.documents import Document
+from datetime import datetime, timedelta
 
 class RetrievalChain:
     def __init__(self, vector_store, temperature=0.0):
@@ -15,7 +16,7 @@ class RetrievalChain:
         Initialize the retrieval chain with a vector store
         
         Args:
-            vector_store: ChromaVectorStore instance
+            vector_store: Chroma instance
             temperature: Temperature for the LLM (lower = more deterministic)
         """
         self.vector_store = vector_store
