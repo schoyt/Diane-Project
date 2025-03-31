@@ -8,15 +8,21 @@ import os
 import argparse
 import yaml
 import sys
+import json
 from datetime import datetime
 import readline  # For better CLI input handling
 from dotenv import load_dotenv
+import colorama
+from colorama import Fore, Style
 
 # Add local modules to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Initialize colorama for cross-platform colored output
+colorama.init()
 
 from src.processing.transcribe import TranscriptionProcessor
 from src.processing.metadata_extractor import MetadataExtractor
@@ -26,6 +32,7 @@ from src.database.vector_db import VectorDatabase
 from src.chains.retrieval_chain import RetrievalChain
 from src.chains.query_parser import QueryParser
 from src.chains.hybrid_search import HybridSearch
+from src.utils.text_to_speech import TTSEngine  # Added import for TTS
 
 def load_config():
     """Load configuration from YAML file"""
@@ -33,8 +40,27 @@ def load_config():
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
 
+def speak_text(text):
+    """
+    Convert text to speech and play it
+    
+    Args:
+        text: Text to be spoken
+    """
+    try:
+        # Get TTS engine from config
+        tts_config = config.get("tts", {})
+        tts_engine = TTSEngine(tts_config)
+        
+        # Speak the text
+        tts_engine.speak(text)
+    except Exception as e:
+        print(f"\n{Fore.YELLOW}[TTS Error] {str(e)}{Style.RESET_ALL}")
+
 def process_audio(audio_path, config):
     """Process a single audio file"""
+    print(f"\n{Fore.CYAN}Processing audio file: {audio_path}{Style.RESET_ALL}")
+    
     # Create transcription processor
     transcriber = TranscriptionProcessor(
         model_size=config["transcription"]["model_size"],
@@ -43,9 +69,11 @@ def process_audio(audio_path, config):
     )
     
     # Transcribe audio
+    print(f"{Fore.YELLOW}Transcribing audio... (this may take a moment){Style.RESET_ALL}")
     transcript_data = transcriber.transcribe_file(audio_path)
     
     # Extract metadata
+    print(f"{Fore.YELLOW}Extracting metadata...{Style.RESET_ALL}")
     extractor = MetadataExtractor()
     metadata = extractor.extract_metadata(transcript_data["text"])
     
@@ -54,8 +82,9 @@ def process_audio(audio_path, config):
     transcript_dir = os.path.join(os.path.dirname(__file__), "data", "transcripts")
     os.makedirs(transcript_dir, exist_ok=True)
     
-    transcript_path = os.path.join(transcript_dir, f"{file_name}.txt")
-    metadata_path = os.path.join(transcript_dir, f"{file_name}_metadata.json")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+    transcript_path = os.path.join(transcript_dir, f"{file_name}_{timestamp}.txt")
+    metadata_path = os.path.join(transcript_dir, f"{file_name}_{timestamp}_metadata.json")
     
     # Save transcript and metadata
     with open(transcript_path, "w") as f:
@@ -65,6 +94,7 @@ def process_audio(audio_path, config):
         json.dump(metadata, f, indent=2)
     
     # Add to databases
+    print(f"{Fore.YELLOW}Adding to databases...{Style.RESET_ALL}")
     db_integrator = DatabaseIntegrator(
         sql_db_path=config["database"]["sql_path"],
         vector_db_path=config["database"]["vector_db_path"],
@@ -81,7 +111,11 @@ def process_audio(audio_path, config):
         }
     )
     
-    print(f"Processed {audio_path} and stored in database")
+    print(f"\n{Fore.GREEN}✓ Successfully processed {audio_path}{Style.RESET_ALL}")
+    print(f"  Transcript saved to: {transcript_path}")
+    print(f"  Metadata saved to: {metadata_path}")
+    print(f"  Added to database for search queries")
+    
     return transcript_path, metadata_path
 
 def query_memory(query_text, config):
@@ -114,7 +148,7 @@ def query_memory(query_text, config):
         search_results = hybrid_searcher.search(query_params, max_results=5)
         
         if not search_results:
-            print("No memories found matching your query.")
+            print(f"\n{Fore.YELLOW}No memories found matching your query.{Style.RESET_ALL}")
             return
         
         # Set up retrieval chain for generating answer
@@ -122,9 +156,6 @@ def query_memory(query_text, config):
             vector_store=vector_db.get_store(),
             temperature=config["llm"]["temperature"]
         )
-        
-        # Format documents for the chain
-        context = "\n\n".join([result["content"] for result in search_results])
         
         # Generate response
         response = retrieval_chain.query(query_text)
@@ -135,18 +166,18 @@ def query_memory(query_text, config):
 def display_count_results(results):
     """Display results for count queries"""
     if results["type"] == "error":
-        print(f"Error: {results['message']}")
+        print(f"\n{Fore.RED}Error: {results['message']}{Style.RESET_ALL}")
         return
         
-    print("\n===== Keyword Frequency Results =====")
-    print(f"Date range: {results['date_range']}")
-    print(f"Total mentions: {results['total_mentions']}")
+    print(f"\n{Fore.GREEN}===== Keyword Frequency Results ====={Style.RESET_ALL}")
+    print(f"{Fore.CYAN}Date range: {results['date_range']}{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}Total mentions: {results['total_mentions']}{Style.RESET_ALL}")
     
     for keyword, count in results["counts"].items():
         print(f"- '{keyword}': {count} mentions")
         
     if results["matching_dates"]:
-        print("\nFound in recordings from these dates:")
+        print(f"\n{Fore.CYAN}Found in recordings from these dates:{Style.RESET_ALL}")
         for date in results["matching_dates"][:5]:  # Show first 5 dates
             print(f"- {date}")
         
@@ -155,10 +186,10 @@ def display_count_results(results):
 
 def display_results(response, search_results):
     """Display query results to the user"""
-    print("\n===== Memory Assistant Response =====")
+    print(f"\n{Fore.GREEN}===== Memory Assistant Response ====={Style.RESET_ALL}")
     print(response)
     
-    print("\n===== Supporting Memories =====")
+    print(f"\n{Fore.GREEN}===== Supporting Memories ====={Style.RESET_ALL}")
     for i, result in enumerate(search_results[:3], 1):  # Show top 3 results
         timestamp = result["metadata"].get("timestamp", "Unknown date")
         if isinstance(timestamp, str):
@@ -166,7 +197,7 @@ def display_results(response, search_results):
         else:
             date_str = timestamp.strftime("%B %d, %Y at %I:%M %p")
             
-        print(f"\n{i}. Memory from {date_str}:")
+        print(f"\n{Fore.CYAN}{i}. Memory from {date_str}:{Style.RESET_ALL}")
         
         # Print a snippet of the content (first 150 chars)
         content_snippet = result["content"].replace("\n", " ")
@@ -176,32 +207,32 @@ def display_results(response, search_results):
 
 def interactive_mode(config):
     """Run the assistant in interactive mode"""
-    print("\n==================================================")
-    print("  DIANE - Your Personal Memory Assistant  ")
-    print("==================================================")
+    print(f"\n{Fore.GREEN}=================================================={Style.RESET_ALL}")
+    print(f"{Fore.GREEN}  DIANE - Your Personal Memory Assistant  {Style.RESET_ALL}")
+    print(f"{Fore.GREEN}=================================================={Style.RESET_ALL}")
     print("Ask me questions about your recorded memories.")
     print("Type 'exit' or 'quit' to end the session.")
-    print("==================================================\n")
+    print(f"{Fore.GREEN}=================================================={Style.RESET_ALL}\n")
     
     while True:
         try:
-            query = input("\nYou: ").strip()
+            query = input(f"\n{Fore.GREEN}You:{Style.RESET_ALL} ").strip()
             
             if query.lower() in ["exit", "quit"]:
-                print("\nThank you for using Diane. Goodbye!")
+                print(f"\n{Fore.CYAN}Thank you for using Diane. Goodbye!{Style.RESET_ALL}")
                 break
                 
             if not query:
                 continue
                 
-            print("\nDiane is thinking...")
+            print(f"\n{Fore.YELLOW}Diane is thinking...{Style.RESET_ALL}")
             query_memory(query, config)
             
         except KeyboardInterrupt:
-            print("\n\nSession interrupted. Goodbye!")
+            print(f"\n\n{Fore.CYAN}Session interrupted. Goodbye!{Style.RESET_ALL}")
             break
         except Exception as e:
-            print(f"\nError: {str(e)}")
+            print(f"\n{Fore.RED}Error: {str(e)}{Style.RESET_ALL}")
 
 def main():
     """Main entry point for the application"""
@@ -231,7 +262,7 @@ def main():
         if args.query_text:
             query_memory(args.query_text, config)
         else:
-            print("Error: Please provide a query text")
+            print(f"{Fore.RED}Error: Please provide a query text{Style.RESET_ALL}")
     elif args.command == "interactive":
         interactive_mode(config)
     else:

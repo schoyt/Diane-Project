@@ -36,15 +36,13 @@ os.makedirs(os.path.join(project_root, "logs"), exist_ok=True)
 # Supported audio formats
 SUPPORTED_FORMATS = ['.mp3', '.wav', '.m4a', '.flac', '.ogg']
 
-def process_single_file(audio_path, output_dir, db_manager, vector_db, move_files=True, force=False):
+def process_single_file(audio_path, output_dir, move_files=True, force=False):
     """
     Process a single audio file - transcribe, extract metadata, and save to databases
     
     Args:
         audio_path: Path to the audio file
         output_dir: Directory to save processed files
-        db_manager: Database manager instance
-        vector_db: Vector database instance
         move_files: Whether to move processed files to processed_audio directory
         force: Whether to reprocess files that already exist in the database
         
@@ -52,6 +50,10 @@ def process_single_file(audio_path, output_dir, db_manager, vector_db, move_file
         bool: True if processing was successful, False otherwise
     """
     try:
+        # Create new database connections for each file
+        db_manager = DatabaseManager()
+        vector_db = VectorDatabase()
+
         filename = os.path.basename(audio_path)
         file_base = os.path.splitext(filename)[0]
         
@@ -130,10 +132,6 @@ def process_directory(input_dir, output_dir=None, workers=4, recursive=False, mo
     if output_dir is None:
         output_dir = os.path.join(project_root, "data")
     
-    # Initialize databases
-    db_manager = DatabaseManager()
-    vector_db = VectorDatabase()
-    
     # Find all audio files
     pattern = '**/*' if recursive else '*'
     audio_files = []
@@ -156,9 +154,7 @@ def process_directory(input_dir, output_dir=None, workers=4, recursive=False, mo
             executor.submit(
                 process_single_file, 
                 audio_path, 
-                output_dir, 
-                db_manager, 
-                vector_db, 
+                output_dir,
                 move_files,
                 force
             ): audio_path for audio_path in audio_files
