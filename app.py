@@ -40,12 +40,13 @@ def load_config():
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
 
-def speak_text(text):
+def speak_text(text, config):
     """
     Convert text to speech and play it
     
     Args:
         text: Text to be spoken
+        config: Configuration object containing TTS settings
     """
     try:
         # Get TTS engine from config
@@ -149,6 +150,7 @@ def query_memory(query_text, config):
         
         if not search_results:
             print(f"\n{Fore.YELLOW}No memories found matching your query.{Style.RESET_ALL}")
+            speak_text("No memories found matching your query.", config)  # Pass config here
             return
         
         # Set up retrieval chain for generating answer
@@ -162,6 +164,7 @@ def query_memory(query_text, config):
         
         # Display results
         display_results(response, search_results)
+        speak_text(response, config)  # Pass config here
 
 def display_count_results(results):
     """Display results for count queries"""
